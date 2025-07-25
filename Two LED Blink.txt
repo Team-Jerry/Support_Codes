@@ -1,0 +1,44 @@
+#include <Arduino.h>
+
+#define LED1_PIN 2 // LED on core 0
+#define LED2_PIN 4 // LED on core 1
+
+TaskHandle_t Task1;
+void blinkLED1(void *parameter);
+
+void setup()
+{
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+
+  // Create Task1 on Core 0
+  xTaskCreatePinnedToCore(
+      blinkLED1,    // Task function
+      "Blink LED1", // Task name
+      10000,         // Stack size
+      NULL,         // Task parameters
+      1,            // Priority
+      &Task1,       // Task handle
+      0             // Core 0
+  );
+}
+
+void loop()
+{
+  digitalWrite(LED2_PIN, HIGH);
+  delay(1000); // 1000 ms ON
+  digitalWrite(LED2_PIN, LOW);
+  delay(1000); // 1000 ms OFF
+}
+
+// Task for LED1 (Core 0)
+void blinkLED1(void *parameter)
+{
+  while (true)
+  {
+    digitalWrite(LED1_PIN, HIGH);
+    delay(500); // 500 ms ON
+    digitalWrite(LED1_PIN, LOW);
+    delay(500); // 500 ms OFF
+  }
+}

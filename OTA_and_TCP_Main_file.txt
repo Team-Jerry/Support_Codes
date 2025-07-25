@@ -1,0 +1,48 @@
+#include <Arduino.h>
+#include "OTA_and_TCP.h"
+
+int rotationalFeedback = 0;
+int curSpeedW = 0;
+int deg_angle = 0;
+int rightEncoderChange_raw = 0;
+int leftEncoderChange_raw = 0;
+int curSpeedX = 0;
+int leftBaseSpeed = 0;
+int rightBaseSpeed = 0;
+int posPwmW = 0;
+int posPwmX = 0;
+int Time_send = 0;
+float battery_voltage_filterd = 0;
+int timelapse = 0;
+float left_encoder_mm = 0;
+float right_encoder_mm = 0;
+
+void send_data();
+
+void setup()
+{
+  Ota_and_TCP_init();
+}
+
+void loop()
+{
+  for (size_t i = 0; i < 1000; i++)
+  {
+    send_data();
+    rotationalFeedback++;
+    curSpeedX++;
+    curSpeedW = 100;
+    timelapse = 1000;
+  }
+  client.print("STOP\n");
+}
+
+void send_data()
+{
+  int curt = micros();
+  client.print(String(rotationalFeedback) + " " + String(curSpeedW) + " " + String(deg_angle) + " " + String((rightEncoderChange_raw + leftEncoderChange_raw) / 2) + " " + String(curSpeedX) + " " + String((leftBaseSpeed + rightBaseSpeed) / 2) + " " + String(-1 * posPwmW) + " " + String((posPwmX)) + " " + String(Time_send) + " " + String((battery_voltage_filterd)) + " " + String((timelapse)) + " " + String((left_encoder_mm + right_encoder_mm) / 2) + "\n");
+  while ((micros() - curt) < 3000)
+  {
+    delayMicroseconds(10);
+  }
+}

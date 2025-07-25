@@ -1,0 +1,137 @@
+#define PWM_Max 1024
+
+int left_encoder_mm = 0;
+int right_encoder_mm = 0;   
+
+float curSpeedX = 0;
+float curSpeedW = 0;
+float targetSpeedX = 0;
+float targetSpeedW = 0;
+
+int encoderFeedbackX = 0;
+int encoderFeedbackW = 0;
+float leftEncoderChange_raw = 0;
+float rightEncoderChange_raw = 0;
+float posErrorX = 0;
+float posErrorW = 0;
+float posErrorT = 0;
+int posPwmX = 0;
+int posPwmW = 0;
+float oldPosErrorX = 0;
+float oldPosErrorW = 0;
+float oldposErrorT = 0;
+
+float kpX = 0.00, kdX = 0.00, kiX = 0.0;
+float kpW = 0.00, kdW = 0.00, kiW = 0.0;
+float kpT = 0.00, kdT = 0.00, kiT = 0.0;
+
+int leftBaseSpeed = 0;
+int rightBaseSpeed = 0;
+
+volatile double leftEncoderOld_raw = 0;
+volatile double rightEncoderOld_raw = 0;
+
+float accX = 6000; // 10000mm/s/s
+float decX = 6000;
+float accW = 2000; // 10mm/s/s
+float decW = 2000;
+
+int mode = 0;
+int rotationalFeedback;
+
+void Encoder_Speed(void)
+{
+    // Raw speed calculation (mm/s)
+    leftEncoderChange_raw = (left_encoder_mm - leftEncoderOld_raw) * (1000000.0 / timelapse);
+    rightEncoderChange_raw = (right_encoder_mm - rightEncoderOld_raw) * (1000000.0 / timelapse);
+
+    // Update old positions
+    leftEncoderOld_raw = left_encoder_mm;
+    rightEncoderOld_raw = right_encoder_mm;
+}
+
+void calculateMotorPwm(void)
+{
+
+    encoderFeedbackX = (rightEncoderChange_raw + leftEncoderChange_raw) / 2;
+    encoderFeedbackW = rightEncoderChange_raw - leftEncoderChange_raw;
+
+    if (mode == 0)
+    {
+        rotationalFeedback = encoderFeedbackW;
+    }
+    else if (mode == 1)
+    {
+        // rotationalFeedback = GyroFeedbackW;
+    }
+
+    posErrorX += curSpeedX - encoderFeedbackX;   // Straight Error feedback
+    posErrorW += curSpeedW - rotationalFeedback; // Rotaional Error feedback
+    //   posErrorT = 0 - TOF_Rotational_feedback(); // TOF sensor Error feedback
+
+    posPwmX = kpX * posErrorX + kdX * (posErrorX - oldPosErrorX);
+    posPwmW = kpW * posErrorW + kdW * (posErrorW - oldPosErrorW) + (kpT * posErrorT + kdT * (posErrorT - oldposErrorT));
+
+    oldPosErrorX = posErrorX;
+    oldPosErrorW = posErrorW;
+    oldposErrorT = posErrorT;
+
+    posPwmX = constrain(posPwmX, -PWM_Max, PWM_Max);
+    posPwmW = constrain(posPwmW, -PWM_Max, PWM_Max);
+
+    leftBaseSpeed = posPwmX - posPwmW;
+    rightBaseSpeed = posPwmX + posPwmW;
+
+    leftBaseSpeed  = constrain(leftBaseSpeed, -PWM_Max, PWM_Max);
+    rightBaseSpeed = constrain(rightBaseSpeed, -PWM_Max, PWM_Max);
+
+    Motor_Set_PWM(leftBaseSpeed, rightBaseSpeed);
+}
+
+void updateCurrentSpeed(void)
+{
+    if (curSpeedX < targetSpeedX)
+    {
+        curSpeedX += accX * timelapse * 0.000001;
+        if (curSpeedX > targetSpeedX)
+            curSpeedX = targetSpeedX;
+    }
+    else if (curSpeedX > targetSpeedX)
+    {
+        curSpeedX += accX * timelapse * 0.000001;
+        if (curSpeedX < targetSpeedX)
+            curSpeedX = targetSpeedX;
+    }
+    if (curSpeedW < targetSpeedW)
+    {
+        curSpeedX += accX * timelapse * 0.000001;
+        if (curSpeedW > targetSpeedW)
+            curSpeedW = targetSpeedW;
+    }
+    else if (curSpeedW > targetSpeedW)
+    {
+        curSpeedX += accX * timelapse * 0.000001;
+        if (curSpeedW < targetSpeedW)
+            curSpeedW = targetSpeedW;
+    }
+}
+
+int needToDecelerate(float dist, int curSpd, int endSpd)
+{
+    if (curSpd < 0)
+        curSpd = abs(curSpd);
+    if (endSpd < 0)
+        endSpd = abs(endSpd);
+    if (dist <= 0)
+        dist = 1;
+
+    int requiredDeceleration = (curSpd * curSpd - endSpd * endSpd) / (2 * dist);
+    return requiredDeceleration;
+}
+
+void speedProfile(void)
+{
+    Encoder_Speed();
+    updateCurrentSpeed();
+    calculateMotorPwm();
+}

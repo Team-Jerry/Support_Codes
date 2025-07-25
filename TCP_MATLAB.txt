@@ -1,0 +1,144 @@
+host = '0.0.0.0'; 
+port = 12645;
+tcpServer = tcpserver(host, port, 'Timeout', 10);
+disp('Waiting for connection...');
+while tcpServer.Connected == 0
+    pause(0.1);
+    
+end
+disp('Client connected');
+
+% Initialize an empty array to store the data
+dataArray = [];
+
+% Timer to track data reception
+tic;
+
+try
+    while true
+        if tcpServer.BytesAvailable > 0
+            data = readline(tcpServer);
+            disp(data);
+            
+            % Reset timer when new data arrives
+            tic;
+            
+            % Check for the stop command
+            if strcmp(strtrim(data), 'STOP')
+                disp('Stop command received.');
+                break;
+            end
+            
+            % Split the data into columns
+            dataValues = str2double(strsplit(data));
+            
+            % Append the data to the array
+            dataArray = [dataArray; dataValues];
+        elseif toc > 30 % If no data received for 30 seconds
+            disp('No data received for 30 seconds. Considering STOP condition.');
+            break;
+        end
+    end
+catch ME
+    disp('An error occurred:');
+    disp(ME.message);
+end
+
+% Save data to a text file
+if ~isempty(dataArray)
+    writematrix(dataArray, 'data.txt');
+    
+    % Define zero line properties
+    zeroLineColor = [1, 0, 0]; % Red color
+    zeroLineStyle = '--'; % Dashed line
+    
+    % First figure
+    figure('Name', 'Figure 1');
+    
+    % First plot: (rightEncoderChange_raw + leftEncoderChange_raw) / 2 vs curSpeedX
+    subplot(3, 1, 1);
+    hold on;
+    plot(dataArray(:, 4), 'DisplayName', '(avgspeed');
+    plot(dataArray(:, 5), 'DisplayName', 'curSpeedX');
+    plot(dataArray(:, 12), 'DisplayName', 'Distance');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('Encoder Feedback & curSpeedX');
+    
+    % Second plot: rotationalFeedback, curSpeedW, angle
+    subplot(3, 1, 2);
+    hold on;
+    plot(dataArray(:, 1), 'DisplayName', 'rotationalFeedback');
+    plot(dataArray(:, 2), 'DisplayName', 'curSpeedW');
+    plot(dataArray(:, 3), 'DisplayName', 'angle');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('rotationalFeedback, curSpeedW, and angle');
+    
+    % Third plot: timelapse
+    subplot(3, 1, 3);
+    hold on;
+    plot(dataArray(:, 11), 'DisplayName', 'timelapse');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('Timelapse');
+    
+    % Second figure
+    figure('Name', 'Figure 2');
+    
+    % First plot: posPwmW
+    subplot(4, 1, 1);
+    hold on;
+    plot(dataArray(:, 7), 'DisplayName', 'posPwmW');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('posPwmW');
+    
+    % Second plot: posPwmX
+    subplot(4, 1, 2);
+    hold on;
+    plot(dataArray(:, 8), 'DisplayName', 'posPwmX');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('posPwmX');
+    
+    % Third plot: left_FF_MATLAB
+    subplot(4, 1, 3);
+    hold on;
+    plot(dataArray(:, 9), 'DisplayName', 'left_FF_MATLAB');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off; 
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('left_FF_MATLAB');
+    
+    % Fourth plot: right_FF_MATLAB
+    subplot(4, 1, 4);
+    hold on;
+    plot(dataArray(:, 10), 'DisplayName', 'Battery Voltage');
+    yline(0, zeroLineStyle, 'Color', zeroLineColor, 'DisplayName', 'Zero Line');
+    hold off;
+    legend('show');
+    xlabel('Sample Number');
+    ylabel('Value');
+    title('Battery Voltage');
+end
+
+% Clear tcpServer
+clear tcpServer;

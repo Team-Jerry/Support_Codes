@@ -1,0 +1,19 @@
+#include <Arduino.h>
+#include "Motor.h"
+#include "SpeedProfile.h"
+#include "Rtos.h"
+
+void setup()
+{
+  Motor_Init();
+  RTOS_Init();
+}
+
+void loop()
+{
+  kpX = 0.20, kdX = 5.0;
+  targetSpeedX = 400;
+  delay(1000);
+  targetSpeedX = 0;
+  delay(1000000000000000);
+}
