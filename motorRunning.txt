@@ -1,0 +1,51 @@
+#include <Arduino.h>
+
+// Motor control pins
+#define IN1 18   // Direction pin 1
+#define IN2 19   // Direction pin 2
+#define PWM_CHANNEL 0
+#define PWM_FREQ 1000  // 1 kHz
+#define PWM_RESOLUTION 8 // 8-bit resolution (0-128)
+
+void setup() {
+  // Set pin modes
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+
+  // Setup PWM
+  ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(IN1, PWM_CHANNEL); // We'll PWM one pin to control speed
+}
+
+void loop() {
+  // Forward at 50% speed
+  digitalWrite(IN2, LOW);
+  ledcWrite(PWM_CHANNEL, 128); // 50% duty cycle
+  delay(2000);
+
+  // Stop
+  ledcWrite(PWM_CHANNEL, 0);
+  delay(1000);
+
+  // Reverse at 75% speed
+  digitalWrite(IN2, HIGH);
+  ledcWrite(PWM_CHANNEL, 0);      // IN1 LOW
+  digitalWrite(IN1, LOW);         // reset IN1 to LOW to detach PWM temporarily
+  delay(10);
+  digitalWrite(IN1, LOW);         // just to be sure
+  digitalWrite(IN2, HIGH);        // reverse dir
+  ledcDetachPin(IN1);             // detach PWM from IN1
+  ledcAttachPin(IN2, PWM_CHANNEL);
+  ledcWrite(PWM_CHANNEL, 128);    // 75% duty cycle
+  delay(2000);
+
+  // Stop
+  ledcWrite(PWM_CHANNEL, 0);
+  delay(1000);
+
+  // Reattach IN1 to PWM for next loop
+  ledcDetachPin(IN2);
+  ledcAttachPin(IN1, PWM_CHANNEL);
+}
+
+// Task for LED1 (Core 0)
